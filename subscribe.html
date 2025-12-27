@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subscribe</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #0e1621;
+    color: #fff;
+    padding: 20px;
+  }
+  h1, h2 {
+    text-align: center;
+  }
+  h1 {
+    color: #4fc3f7;
+  }
+  h2 {
+    color: #ffca28;
+    margin-bottom: 30px;
+  }
+  .channel {
+    background: #1b2430;
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .channel b {
+    font-size: 18px;
+    color: #4fc3f7;
+  }
+  .sub-btn {
+    padding: 8px 15px;
+    background: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  .sub-btn:hover {
+    background: #45a049;
+  }
+</style>
+</head>
+<body>
+
+<h1>Subscribe Channels</h1>
+<h2 id="coin">Coins: 0</h2>
+<div id="channels"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, get, update, onValue, push } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+/* 🔹 Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
+  authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
+  databaseURL: "https://magnetic-alloy-467611-u7-default-rtdb.firebaseio.com",
+  projectId: "magnetic-alloy-467611-u7",
+  storageBucket: "magnetic-alloy-467611-u7.firebasestorage.app",
+  messagingSenderId: "589500919880",
+  appId: "1:589500919880:web:15c3e68f5e7e1fbf51687d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* 🔹 User ID tekshirish */
+const params = new URLSearchParams(window.location.search);
+const userId = params.get("user");
+if (!userId) {
+  alert("Login qilinmagan!");
+  window.location.href = "index.html";
+  throw new Error("User ID yo‘q");
+}
+
+const userRef = ref(db, "users/" + userId);
+const ordersRef = ref(db, "orders");
+
+/* 🔹 Balansni ko‘rsatish */
+const coinDiv = document.getElementById("coin");
+onValue(userRef, snap => {
+  if(!snap.exists()) return;
+  coinDiv.innerText = "Coins: " + (snap.val().coin || 0);
+});
+
+/* 🔹 Orderlardan kanal ro‘yxatini olish va ko‘rsatish */
+onValue(ordersRef, snap => {
+  const channelsDiv = document.getElementById("channels");
+  channelsDiv.innerHTML = "";
+
+  snap.forEach(orderSnap => {
+    const order = orderSnap.val();
+    const orderId = orderSnap.key;
+
+    const div = document.createElement("div");
+    div.classList.add("channel");
+    div.innerHTML = `
+      <b>${order.channel}</b>
+      <button id="sub-${orderId}" class="sub-btn">Subscribe</button>
+    `;
+    channelsDiv.appendChild(div);
+
+    /* Subscribe tugmasi */
+    document.getElementById("sub-" + orderId).onclick = async () => {
+      const userSnap = await get(userRef);
+      let userCoin = userSnap.val().coin || 0;
+
+      if(userCoin < 1){
+        alert("Coin yetarli emas!");
+        return;
+      }
+
+      // Coinni yechib olish
+      await update(userRef, { coin: userCoin - 1 });
+
+      // Subscriptions bazaga qo‘shish
+      const subRef = ref(db, `subscriptions/${userId}/${orderId}`);
+      await push(subRef, true);
+
+      alert("Subscribed! -1 coin");
+    };
+  });
+});
+</script>
+
+</body>
+</html>
