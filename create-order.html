@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Order</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #0e1621;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 30px;
+  }
+  .container {
+    background: #1b2430;
+    padding: 20px 30px;
+    border-radius: 15px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  }
+  h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #4fc3f7;
+  }
+  label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+  }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    margin-bottom: 15px;
+    font-size: 16px;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #4fc3f7;
+    border: none;
+    border-radius: 10px;
+    font-size: 18px;
+    color: #0e1621;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover {
+    background: #00b0ff;
+  }
+  .balance {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 16px;
+    color: #ffca28;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Create Order</h1>
+  <div class="balance" id="balance">Balance: 0 coin</div>
+  
+  <label for="channel">Channel Link:</label>
+  <input type="text" id="channel" placeholder="https://t.me/yourchannel">
+  
+  <label for="subs">Subscribers Needed:</label>
+  <input type="number" id="subs" min="1" placeholder="Number of subscribers">
+  
+  <button id="createOrder">Create Order</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, get, push, update } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+/* 🔹 Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
+  authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
+  databaseURL: "https://magnetic-alloy-467611-u7-default-rtdb.firebaseio.com",
+  projectId: "magnetic-alloy-467611-u7",
+  storageBucket: "magnetic-alloy-467611-u7.firebasestorage.app",
+  messagingSenderId: "589500919880",
+  appId: "1:589500919880:web:15c3e68f5e7e1fbf51687d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* 🔹 User ID olish */
+const urlParams = new URLSearchParams(window.location.search);
+const userId = urlParams.get('user');
+if(!userId){
+  alert("Login qilinmagan!");
+  window.location.href = "index.html";
+}
+
+/* 🔹 Balansni ko‘rsatish */
+const balanceDiv = document.getElementById("balance");
+const userRef = ref(db, "users/" + userId);
+get(userRef).then(snap => {
+  if(snap.exists()){
+    const u = snap.val();
+    balanceDiv.innerText = "Balance: " + (u.coin || 0) + " coin";
+  } else {
+    alert("User topilmadi!");
+    window.location.href = "index.html";
+  }
+});
+
+/* 🔹 Order yaratish */
+document.getElementById("createOrder").onclick = async () => {
+  const channel = document.getElementById("channel").value.trim();
+  const subs = parseInt(document.getElementById("subs").value);
+
+  if(!channel || !subs || subs <= 0){
+    alert("Iltimos barcha maydonlarni to‘ldiring!");
+    return;
+  }
+
+  const orderCost = subs * 2; // 1 subscriber = 2 coin
+
+  const userSnap = await get(userRef);
+  const coin = userSnap.val().coin || 0;
+
+  if(coin < orderCost){
+    alert("Balans yetarli emas!");
+    return;
+  }
+
+  // Coinni yechib olish
+  await update(userRef, { coin: coin - orderCost });
+  balanceDiv.innerText = "Balance: " + (coin - orderCost) + " coin";
+
+  // Order bazaga qo‘shish
+  const ordersRef = ref(db, "orders");
+  await push(ordersRef, {
+    userId: userId,
+    channel: channel,
+    subscribers: subs,
+    cost: orderCost,
+    status: "pending",
+    timestamp: Date.now()
+  });
+
+  alert("Order yaratildi! -"+orderCost+" coin");
+  document.getElementById("channel").value = "";
+  document.getElementById("subs").value = "";
+};
+</script>
+
+</body>
+</html>

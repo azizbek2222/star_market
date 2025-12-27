@@ -3,6 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <title>Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0e1621;
+      color: #fff;
+      padding: 20px;
+    }
+    #welcome {
+      color: #4fc3f7;
+      text-align: center;
+    }
+    #coin {
+      text-align: center;
+      color: #ffca28;
+      margin-bottom: 20px;
+    }
+    .channel {
+      background: #1b2430;
+      padding: 15px 20px;
+      margin-bottom: 15px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    .channel b {
+      font-size: 18px;
+      color: #4fc3f7;
+    }
+    .channel p {
+      margin: 8px 0;
+    }
+    .channel button {
+      padding: 10px 15px;
+      margin-right: 10px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .sub-btn {
+      background: #4caf50;
+      color: #fff;
+    }
+    .sub-btn:hover {
+      background: #45a049;
+    }
+    .buy-btn {
+      background: #f44336;
+      color: #fff;
+    }
+    .buy-btn:hover {
+      background: #e53935;
+    }
+  </style>
 </head>
 <body>
 
@@ -65,12 +120,12 @@ onValue(channelsRef, snap => {
     const id = ch.key;
 
     const div = document.createElement("div");
+    div.classList.add("channel");
     div.innerHTML = `
-      <b>${c.name}</b><br>
-      Subscribers: ${c.subscribers || 0}<br>
-      <button id="sub-${id}">Subscribe (+1 coin)</button>
-      <button id="buy-${id}">Buy (-2 coins)</button>
-      <hr>
+      <b>${c.name}</b>
+      <p>Subscribers: ${c.subscribers || 0}</p>
+      <button id="sub-${id}" class="sub-btn">Subscribe (+1 coin)</button>
+      <button id="buy-${id}" class="buy-btn">Buy (-2 coins)</button>
     `;
     box.appendChild(div);
 
