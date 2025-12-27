@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <title>Home</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+  import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
@@ -32,11 +33,16 @@
   }
 
   const userRef = ref(db, 'users/' + userId);
-  get(userRef).then((snapshot) => {
+
+  // Real-time listener
+  onValue(userRef, (snapshot) => {
     if(snapshot.exists()){
       const userData = snapshot.val();
-      document.getElementById("welcome").innerText = "Welcome, " + userData.name;
-      document.getElementById("coin").innerText = "Coins: " + userData.coin;
+      const name = userData.name || "NoName";
+      const coin = userData.coin != null ? userData.coin : 0;
+
+      document.getElementById("welcome").innerText = "Welcome, " + name;
+      document.getElementById("coin").innerText = "Coins: " + coin;
     } else {
       alert("User data not found!");
       window.location.href = "index.html";
@@ -45,7 +51,9 @@
 </script>
 </head>
 <body style="background:#0e1621;color:#fff;font-family:Arial;text-align:center;padding:50px;">
+
 <h1 id="welcome">Loading...</h1>
 <h2 id="coin"></h2>
+
 </body>
 </html>

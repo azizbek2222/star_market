@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <title>Telegram Login + Firebase</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script type="module">
-  // Firebase SDK import
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
@@ -29,21 +29,30 @@
   window.onTelegramAuth = function(user) {
     const userRef = ref(db, 'users/' + user.id);
 
-    // Foydalanuvchi bazada mavjudligini tekshirish
+    let firstName = user.first_name || "NoName";
+    let username = user.username || "";
+
+    // Check if user exists
     get(child(ref(db), 'users/' + user.id)).then((snapshot) => {
-      if (snapshot.exists()) {
-        // Mavjud user, home.html ga redirect
+      if(snapshot.exists()){
+        // Existing user
         window.location.href = "home.html?user=" + user.id;
       } else {
-        // Yangi user, bazaga qo‘shish va coin=100 berish
+        // New user
         set(userRef, {
-          name: user.first_name,
-          username: user.username || "",
+          name: firstName,
+          username: username,
           coin: 100
         }).then(() => {
           window.location.href = "home.html?user=" + user.id;
+        }).catch(err => {
+          console.error("Firebase error:", err);
+          alert("Login failed!");
         });
       }
+    }).catch(err => {
+      console.error("Firebase error:", err);
+      alert("Login failed!");
     });
   }
 </script>
@@ -57,6 +66,7 @@
   data-telegram-login="star_members_robot"
   data-size="large"
   data-userpic="true"
+  data-lang="en"
   data-onauth="onTelegramAuth(user)">
 </script>
 
