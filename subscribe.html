@@ -4,62 +4,64 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Subscribe</title>
+
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #0e1621;
-    color: #fff;
-    padding: 20px;
-  }
-  h1, h2 {
-    text-align: center;
-  }
-  h1 {
-    color: #4fc3f7;
-  }
-  h2 {
-    color: #ffca28;
-    margin-bottom: 30px;
-  }
-  .channel {
-    background: #1b2430;
-    padding: 15px 20px;
-    margin-bottom: 15px;
-    border-radius: 12px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.3);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .channel b {
-    font-size: 18px;
-    color: #4fc3f7;
-  }
-  .sub-btn {
-    padding: 8px 15px;
-    background: #4caf50;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: 0.3s;
-  }
-  .sub-btn:hover {
-    background: #45a049;
-  }
+body{
+  font-family: Arial, sans-serif;
+  background:#0e1621;
+  color:#fff;
+  padding:20px;
+}
+h1{
+  text-align:center;
+  color:#4fc3f7;
+}
+#coin{
+  text-align:center;
+  color:#ffca28;
+  margin-bottom:20px;
+}
+.channel{
+  background:#1b2430;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.channel b{
+  color:#4fc3f7;
+}
+button{
+  padding:8px 14px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  background:#4caf50;
+  color:#fff;
+}
+button:hover{
+  background:#43a047;
+}
 </style>
 </head>
+
 <body>
 
 <h1>Subscribe Channels</h1>
 <h2 id="coin">Coins: 0</h2>
+
 <div id="channels"></div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-import { getDatabase, ref, get, update, onValue, push } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+<!-- Telegram Mini App -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-/* 🔹 Firebase config */
+<script type="module">
+/* ---------------- FIREBASE ---------------- */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
   authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
@@ -73,60 +75,87 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* 🔹 User ID tekshirish */
-const params = new URLSearchParams(window.location.search);
-const userId = params.get("user");
-if (!userId) {
-  alert("Login qilinmagan!");
+/* ---------------- TELEGRAM USER ---------------- */
+const tg = window.Telegram.WebApp;
+tg.ready();
+
+if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+  // Telegram login YO‘Q → index.html ga qaytaradi
   window.location.href = "index.html";
-  throw new Error("User ID yo‘q");
+  throw new Error("Telegram login yo‘q");
 }
 
+const tgUser = tg.initDataUnsafe.user;
+const userId = tgUser.id;
+const userName = tgUser.first_name || "User";
+
+/* ---------------- REFS ---------------- */
 const userRef = ref(db, "users/" + userId);
 const ordersRef = ref(db, "orders");
 
-/* 🔹 Balansni ko‘rsatish */
-const coinDiv = document.getElementById("coin");
+/* ---------------- USER CREATE / UPDATE ---------------- */
+const userSnap = await get(userRef);
+if (!userSnap.exists()) {
+  await set(userRef, {
+    name: userName,
+    coin: 0
+  });
+}
+
+/* ---------------- COIN REALTIME ---------------- */
 onValue(userRef, snap => {
-  if(!snap.exists()) return;
-  coinDiv.innerText = "Coins: " + (snap.val().coin || 0);
+  document.getElementById("coin").innerText =
+    "Coins: " + (snap.val().coin || 0);
 });
 
-/* 🔹 Orderlardan kanal ro‘yxatini olish va ko‘rsatish */
+/* ---------------- TELEGRAM BOT ---------------- */
+const BOT_TOKEN = "8548586153:AAFi-FS-DDpJCk-uydMkPMUQBpSuEc4BYkE";
+
+/* ---------------- CHANNEL LIST ---------------- */
 onValue(ordersRef, snap => {
-  const channelsDiv = document.getElementById("channels");
-  channelsDiv.innerHTML = "";
+  const box = document.getElementById("channels");
+  box.innerHTML = "";
 
   snap.forEach(orderSnap => {
     const order = orderSnap.val();
     const orderId = orderSnap.key;
 
     const div = document.createElement("div");
-    div.classList.add("channel");
+    div.className = "channel";
     div.innerHTML = `
       <b>${order.channel}</b>
-      <button id="sub-${orderId}" class="sub-btn">Subscribe</button>
+      <button id="btn-${orderId}">Subscribe</button>
     `;
-    channelsDiv.appendChild(div);
+    box.appendChild(div);
 
-    /* Subscribe tugmasi */
-    document.getElementById("sub-" + orderId).onclick = async () => {
-      const userSnap = await get(userRef);
-      let userCoin = userSnap.val().coin || 0;
+    document.getElementById("btn-" + orderId).onclick = async () => {
 
-      if(userCoin < 1){
-        alert("Coin yetarli emas!");
-        return;
-      }
+      // TELEGRAM OBUNA TEKSHIRISH
+      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${order.channel}&user_id=${userId}`)
+        .then(r => r.json())
+        .then(async data => {
 
-      // Coinni yechib olish
-      await update(userRef, { coin: userCoin - 1 });
+          if (!data.ok) {
+            alert("Tekshiruv xatosi");
+            return;
+          }
 
-      // Subscriptions bazaga qo‘shish
-      const subRef = ref(db, `subscriptions/${userId}/${orderId}`);
-      await push(subRef, true);
+          const status = data.result.status;
+          if (status === "member" || status === "administrator" || status === "creator") {
 
-      alert("Subscribed! -1 coin");
+            const u = (await get(userRef)).val();
+            await update(userRef, {
+              coin: (u.coin || 0) + 1
+            });
+
+            alert("✅ Obuna tasdiqlandi +1 coin");
+
+          } else {
+            alert("❌ Avval kanalga obuna bo‘ling");
+            window.open("https://t.me/" + order.channel.replace("@",""), "_blank");
+          }
+
+        });
     };
   });
 });
