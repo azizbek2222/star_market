@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
+    authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
+    databaseURL: "https://magnetic-alloy-467611-u7-default-rtdb.firebaseio.com",
+    projectId: "magnetic-alloy-467611-u7",
+    storageBucket: "magnetic-alloy-467611-u7.firebasestorage.app",
+    messagingSenderId: "589500919880",
+    appId: "1:589500919880:web:15c3e68f5e7e1fbf51687d",
+    measurementId: "G-TD0N13MPX3"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // URL’dan user_id olamiz
+  const urlParams = new URLSearchParams(window.location.search);
+  const userId = urlParams.get('user');
+
+  if(!userId){
+    alert("User not found!");
+    window.location.href = "index.html";
+  }
+
+  const userRef = ref(db, 'users/' + userId);
+  get(userRef).then((snapshot) => {
+    if(snapshot.exists()){
+      const userData = snapshot.val();
+      document.getElementById("welcome").innerText = "Welcome, " + userData.name;
+      document.getElementById("coin").innerText = "Coins: " + userData.coin;
+    } else {
+      alert("User data not found!");
+      window.location.href = "index.html";
+    }
+  });
+</script>
+</head>
+<body style="background:#0e1621;color:#fff;font-family:Arial;text-align:center;padding:50px;">
+<h1 id="welcome">Loading...</h1>
+<h2 id="coin"></h2>
+</body>
+</html>
