@@ -1,59 +1,105 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uz">
 <head>
-<meta charset="UTF-8">
-<title>Home</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
-  import { getDatabase, ref, get, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
-    authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
-    databaseURL: "https://magnetic-alloy-467611-u7-default-rtdb.firebaseio.com",
-    projectId: "magnetic-alloy-467611-u7",
-    storageBucket: "magnetic-alloy-467611-u7.firebasestorage.app",
-    messagingSenderId: "589500919880",
-    appId: "1:589500919880:web:15c3e68f5e7e1fbf51687d",
-    measurementId: "G-TD0N13MPX3"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-
-  // URL’dan user_id olamiz
-  const urlParams = new URLSearchParams(window.location.search);
-  const userId = urlParams.get('user');
-
-  if(!userId){
-    alert("User not found!");
-    window.location.href = "index.html";
-  }
-
-  const userRef = ref(db, 'users/' + userId);
-
-  // Real-time listener
-  onValue(userRef, (snapshot) => {
-    if(snapshot.exists()){
-      const userData = snapshot.val();
-      const name = userData.name || "NoName";
-      const coin = userData.coin != null ? userData.coin : 0;
-
-      document.getElementById("welcome").innerText = "Welcome, " + name;
-      document.getElementById("coin").innerText = "Coins: " + coin;
-    } else {
-      alert("User data not found!");
-      window.location.href = "index.html";
-    }
-  });
-</script>
+  <meta charset="UTF-8">
+  <title>Home</title>
 </head>
-<body style="background:#0e1621;color:#fff;font-family:Arial;text-align:center;padding:50px;">
+<body>
 
 <h1 id="welcome">Loading...</h1>
-<h2 id="coin"></h2>
+<h2 id="coin">Coins: 0</h2>
+
+<h3>Channels</h3>
+<div id="channels"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
+
+/* 🔹 Firebase config */
+const firebaseConfig = {
+  apiKey: "AIzaSyA7VLHdjPqf_tobSiBczGbN8H7YlFwq9Wg",
+  authDomain: "magnetic-alloy-467611-u7.firebaseapp.com",
+  databaseURL: "https://magnetic-alloy-467611-u7-default-rtdb.firebaseio.com",
+  projectId: "magnetic-alloy-467611-u7",
+  storageBucket: "magnetic-alloy-467611-u7.firebasestorage.app",
+  messagingSenderId: "589500919880",
+  appId: "1:589500919880:web:15c3e68f5e7e1fbf51687d"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+/* 🔹 USER ID TEKSHIRISH */
+const params = new URLSearchParams(window.location.search);
+const userId = params.get("user");
+
+if (!userId) {
+  alert("Login qilinmagan!");
+  window.location.href = "index.html";
+  throw new Error("User ID yo‘q");
+}
+
+const userRef = ref(db, "users/" + userId);
+const channelsRef = ref(db, "channels");
+
+/* 🔹 USER DATA */
+onValue(userRef, snap => {
+  if (!snap.exists()) {
+    alert("User topilmadi!");
+    window.location.href = "index.html";
+    return;
+  }
+  const u = snap.val();
+  document.getElementById("welcome").innerText = "Welcome, " + (u.name || "User");
+  document.getElementById("coin").innerText = "Coins: " + (u.coin || 0);
+});
+
+/* 🔹 CHANNELS */
+onValue(channelsRef, snap => {
+  const box = document.getElementById("channels");
+  box.innerHTML = "";
+
+  snap.forEach(ch => {
+    const c = ch.val();
+    const id = ch.key;
+
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <b>${c.name}</b><br>
+      Subscribers: ${c.subscribers || 0}<br>
+      <button id="sub-${id}">Subscribe (+1 coin)</button>
+      <button id="buy-${id}">Buy (-2 coins)</button>
+      <hr>
+    `;
+    box.appendChild(div);
+
+    /* SUBSCRIBE */
+    document.getElementById("sub-" + id).onclick = async () => {
+      const u = (await get(userRef)).val();
+      await update(userRef, { coin: (u.coin || 0) + 1 });
+      alert("+1 coin");
+    };
+
+    /* BUY */
+    document.getElementById("buy-" + id).onclick = async () => {
+      const u = (await get(userRef)).val();
+      if ((u.coin || 0) < 2) {
+        alert("Coin yetarli emas");
+        return;
+      }
+      await update(userRef, { coin: u.coin - 2 });
+
+      const cSnap = await get(ref(db, "channels/" + id));
+      await update(ref(db, "channels/" + id), {
+        subscribers: (cSnap.val().subscribers || 0) + 1
+      });
+
+      alert("Buyurtma qabul qilindi");
+    };
+  });
+});
+</script>
 
 </body>
 </html>
