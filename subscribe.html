@@ -54,11 +54,9 @@ button:hover{
 
 <div id="channels"></div>
 
-<!-- Telegram Mini App -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
 <script type="module">
-/* ---------------- FIREBASE ---------------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getDatabase, ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-database.js";
 
@@ -75,65 +73,60 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-/* ---------------- TELEGRAM USER ---------------- */
-const tg = window.Telegram.WebApp;
-tg.ready();
+async function main() {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
 
-if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-  // Telegram login YO‘Q → index.html ga qaytaradi
-  window.location.href = "index.html";
-  throw new Error("Telegram login yo‘q");
-}
+  if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
+    window.location.href = "index.html";
+    return;
+  }
 
-const tgUser = tg.initDataUnsafe.user;
-const userId = tgUser.id;
-const userName = tgUser.first_name || "User";
+  const tgUser = tg.initDataUnsafe.user;
+  const userId = tgUser.id;
+  const userName = tgUser.first_name || "User";
 
-/* ---------------- REFS ---------------- */
-const userRef = ref(db, "users/" + userId);
-const ordersRef = ref(db, "orders");
+  const userRef = ref(db, "users/" + userId);
+  const ordersRef = ref(db, "orders");
 
-/* ---------------- USER CREATE / UPDATE ---------------- */
-const userSnap = await get(userRef);
-if (!userSnap.exists()) {
-  await set(userRef, {
-    name: userName,
-    coin: 0
+  // Agar foydalanuvchi mavjud bo‘lmasa yaratamiz
+  const userSnap = await get(userRef);
+  if (!userSnap.exists()) {
+    await set(userRef, {
+      name: userName,
+      coin: 0
+    });
+  }
+
+  // Coinni realtime ko‘rsatish
+  onValue(userRef, snap => {
+    document.getElementById("coin").innerText =
+      "Coins: " + (snap.val().coin || 0);
   });
-}
 
-/* ---------------- COIN REALTIME ---------------- */
-onValue(userRef, snap => {
-  document.getElementById("coin").innerText =
-    "Coins: " + (snap.val().coin || 0);
-});
+  const BOT_TOKEN = "8548586153:AAFi-FS-DDpJCk-uydMkPMUQBpSuEc4BYk";
 
-/* ---------------- TELEGRAM BOT ---------------- */
-const BOT_TOKEN = "8548586153:AAFi-FS-DDpJCk-uydMkPMUQBpSuEc4BYkE";
+  // Kanal ro'yxatini ko‘rsatish
+  onValue(ordersRef, snap => {
+    const box = document.getElementById("channels");
+    box.innerHTML = "";
 
-/* ---------------- CHANNEL LIST ---------------- */
-onValue(ordersRef, snap => {
-  const box = document.getElementById("channels");
-  box.innerHTML = "";
+    snap.forEach(orderSnap => {
+      const order = orderSnap.val();
+      const orderId = orderSnap.key;
 
-  snap.forEach(orderSnap => {
-    const order = orderSnap.val();
-    const orderId = orderSnap.key;
+      const div = document.createElement("div");
+      div.className = "channel";
+      div.innerHTML = `
+        <b>${order.channel}</b>
+        <button id="btn-${orderId}">Subscribe</button>
+      `;
+      box.appendChild(div);
 
-    const div = document.createElement("div");
-    div.className = "channel";
-    div.innerHTML = `
-      <b>${order.channel}</b>
-      <button id="btn-${orderId}">Subscribe</button>
-    `;
-    box.appendChild(div);
-
-    document.getElementById("btn-" + orderId).onclick = async () => {
-
-      // TELEGRAM OBUNA TEKSHIRISH
-      fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${order.channel}&user_id=${userId}`)
-        .then(r => r.json())
-        .then(async data => {
+      document.getElementById("btn-" + orderId).onclick = async () => {
+        try {
+          const resp = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${order.channel}&user_id=${userId}`);
+          const data = await resp.json();
 
           if (!data.ok) {
             alert("Tekshiruv xatosi");
@@ -142,23 +135,24 @@ onValue(ordersRef, snap => {
 
           const status = data.result.status;
           if (status === "member" || status === "administrator" || status === "creator") {
-
             const u = (await get(userRef)).val();
-            await update(userRef, {
-              coin: (u.coin || 0) + 1
-            });
-
+            await update(userRef, { coin: (u.coin || 0) + 1 });
             alert("✅ Obuna tasdiqlandi +1 coin");
-
           } else {
             alert("❌ Avval kanalga obuna bo‘ling");
             window.open("https://t.me/" + order.channel.replace("@",""), "_blank");
           }
 
-        });
-    };
+        } catch(err) {
+          console.error(err);
+          alert("Xatolik yuz berdi");
+        }
+      };
+    });
   });
-});
+}
+
+main();
 </script>
 
 </body>
